@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5ef">
+  <title>Cell Studio — Explore the cell</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #19211f;
+      --muted: #66716d;
+      --paper: #f7f5ef;
+      --white: #fffefa;
+      --green: #c8e66b;
+      --green-dark: #456328;
+      --line: #e7e4da;
+      --blue: #2853e2;
+      --orange: #f3b359;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    button { font: inherit; }
+    a { color: inherit; }
+    .shell { width: min(1160px, calc(100% - 48px)); margin: 0 auto; }
+
+    .topbar { height: 76px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; letter-spacing: -.04em; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--green); font-size: 18px; }
+    .brand span:last-child { font-size: 16px; }
+    .nav { display: flex; gap: 30px; align-items: center; color: var(--muted); font-size: 13px; font-weight: 650; }
+    .nav a { text-decoration: none; }
+    .nav a:hover { color: var(--ink); }
+    .class-tag { background: var(--white); border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px; color: var(--muted); font-size: 12px; font-weight: 700; }
+
+    .hero { display: grid; grid-template-columns: 1.08fr .92fr; align-items: center; gap: 38px; padding: 66px 0 54px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 18px; color: var(--green-dark); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #82a843; }
+    h1 { margin: 0; max-width: 590px; font-size: clamp(48px, 6vw, 76px); line-height: .98; letter-spacing: -.075em; }
+    h1 em { color: #75923d; font-style: normal; }
+    .hero-copy { max-width: 480px; margin: 22px 0 25px; color: var(--muted); font-size: 16px; line-height: 1.65; }
+    .hero-actions { display: flex; gap: 11px; align-items: center; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 17px; border: 0; border-radius: 999px; background: var(--ink); color: white; text-decoration: none; font-size: 13px; font-weight: 750; cursor: pointer; transition: transform .18s, background .18s; }
+    .button:hover { transform: translateY(-2px); background: #34433d; }
+    .button.secondary { background: var(--white); color: var(--ink); border: 1px solid var(--line); }
+    .hero-art { min-height: 314px; position: relative; display: grid; place-items: center; overflow: hidden; border: 1px solid #e6e2d6; border-radius: 27px; background: #efeee6; }
+    .hero-art::before, .hero-art::after { content: ""; position: absolute; border: 1px solid #dedbce; border-radius: 50%; }
+    .hero-art::before { width: 260px; height: 260px; }
+    .hero-art::after { width: 345px; height: 345px; }
+    .hero-art img { position: relative; z-index: 1; width: min(83%, 385px); max-height: 250px; object-fit: contain; mix-blend-mode: multiply; }
+    .art-label { position: absolute; z-index: 2; bottom: 18px; left: 20px; padding: 9px 12px; border-radius: 999px; background: var(--white); font-size: 11px; font-weight: 750; }
+    .art-index { position: absolute; right: 19px; top: 18px; color: #9ba19a; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin: 8px 0 21px; }
+    .section-head h2 { margin: 0; font-size: clamp(28px, 3vw, 38px); letter-spacing: -.055em; }
+    .section-head p { max-width: 355px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .translator { padding: 31px; border: 1px solid var(--line); border-radius: 25px; background: var(--white); box-shadow: 0 12px 35px #2a30200a; }
+    .translator-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding-bottom: 19px; border-bottom: 1px solid var(--line); }
+    .translator-title { display: flex; gap: 11px; align-items: center; }
+    .step-number { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 12px; background: #edf3d9; color: #536c2f; font-size: 13px; font-weight: 850; }
+    .translator-title strong { display: block; font-size: 14px; }
+    .translator-title small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 750; }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #b3b8ad; }
+    .status.ready::before { background: #83ac4a; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(230px, .65fr); gap: 22px; padding-top: 22px; }
+    .diagram-panel { min-height: 312px; display: flex; flex-direction: column; justify-content: space-between; padding: 19px; overflow: hidden; border-radius: 18px; background: #f3f2eb; }
+    .diagram-caption { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .ribosome-stage { width: min(100%, 420px); aspect-ratio: 314 / 201; position: relative; margin: 0 auto; }
+    .assembled-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .mrna-cover { position: absolute; z-index: 1; left: 0; top: 66%; width: 86%; height: 7.5%; background: #f3f2eb; }
+    .mrna-cover[hidden] { display: none; }
+    .dropzone { position: absolute; z-index: 3; left: 0; top: 62%; width: 86%; height: 17%; display: grid; place-items: center; border: 1.5px dashed #b8b9a9; border-radius: 8px; background: #fffefa88; color: #596254; font-size: 10px; font-weight: 750; transition: .2s; }
+    .dropzone[hidden] { display: none; }
+    .dropzone.active { border-color: #718f3c; background: #edf4dc; color: #496126; }
+    .chain { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+    .amino-bead { position: absolute; z-index: 1; width: 6.05%; aspect-ratio: 1; border: 1px solid #f3f2eb; border-radius: 50%; transform: translate(-50%, -50%); animation: pop .35s both; }
+    @keyframes pop { from { opacity: 0; scale: .65; } to { opacity: 1; scale: 1; } }
+    .codons { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .mrna-source { position: relative; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; padding: 15px 9px 8px; border: 1px dashed #d9d6ca; border-radius: 12px; background: #fffefa; cursor: grab; }
+    .mrna-source:active { cursor: grabbing; }
+    .mrna-source::before { content: "mRNA strand · drag into ribosome"; position: absolute; top: 4px; left: 12px; color: #8b6b3d; font-size: 8px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+    .mrna-source.loaded { cursor: default; border-style: solid; }
+    .mrna-source.loaded::before { content: "mRNA codons · 5′ → 3′"; color: #7b837a; }
+    .mrna-source:focus-visible { outline: 3px solid #a5bf70; outline-offset: 2px; }
+    .codon { min-width: 41px; padding: 7px 5px; border: 1px solid #e4e0d5; border-radius: 7px; background: #fffefa; color: #606b63; text-align: center; font: 750 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .codon.active { border-color: #98b966; background: #edf4dc; color: #486127; box-shadow: 0 0 0 2px #dfeacb; }
+    .codon.stop { color: #aa6941; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 13px; }
+    .control-btn { min-height: 37px; padding: 0 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--white); color: var(--ink); font-size: 11px; font-weight: 750; cursor: pointer; }
+    .control-btn.primary { border-color: var(--ink); background: var(--ink); color: white; }
+    .control-btn:disabled { opacity: .42; cursor: not-allowed; }
+    .info-panel { display: flex; flex-direction: column; gap: 12px; }
+    .sequence-card, .explain-card { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: #fffefa; }
+    .mini-label { margin: 0 0 10px; color: #7b837a; font-size: 9px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    .sequence { color: #28332e; font: 700 11px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; word-spacing: 5px; }
+    .sequence .focus { color: #6f8e36; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    .explain-card { flex: 1; background: #f6f8ee; border-color: #e7ebda; }
+    .explain-card p:last-child { margin: 0; color: #606b60; font-size: 12px; line-height: 1.55; }
+    .translation-result { display: none; align-items: center; gap: 7px; margin-top: 12px; color: #496127; font-size: 11px; font-weight: 750; }
+    .translation-result.visible { display: flex; }
+    .legend { display: flex; justify-content: center; gap: 18px; margin-top: 16px; color: var(--muted); font-size: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; }
+    .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+    .swatch.orange { background: var(--orange); }
+    .swatch.green { background: #83ac4a; }
+
+    .organelles { padding: 78px 0 83px; }
+    .organelles .section-head { margin-bottom: 22px; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .organelle-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--white); }
+    .organelle-image { height: 190px; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; padding: 19px; background: #efeee6; }
+    .organelle-image img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+    .organelle-card:first-child .organelle-image { overflow: hidden; }
+    .organelle-card:first-child .organelle-image img { width: auto; height: auto; max-width: 100%; max-height: 152px; }
+    .organelle-card:nth-child(2) .organelle-image img { max-width: 230px; }
+    .organelle-info { position: relative; z-index: 1; padding: 19px; background: var(--white); }
+    .organelle-label { margin: 0 0 8px; color: #849165; font-size: 9px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+    .organelle-info h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: -.04em; }
+    .organelle-info p:last-child { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    footer { border-top: 1px solid var(--line); padding: 20px 0 26px; color: #81877e; font-size: 11px; }
+    footer .shell { display: flex; justify-content: space-between; gap: 20px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 32px, 600px); }
+      .topbar { height: 66px; }
+      .nav { gap: 16px; }
+      .nav a:first-child { display: none; }
+      .class-tag { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 28px; padding: 48px 0 45px; }
+      .hero-art { min-height: 260px; }
+      .hero-art img { max-height: 205px; }
+      .workspace { grid-template-columns: 1fr; }
+      .diagram-panel { min-height: 292px; }
+      .info-panel { display: grid; grid-template-columns: 1fr 1fr; }
+      .explain-card { min-height: 120px; }
+      .cards { grid-template-columns: 1fr 1fr; }
+      .organelles { padding: 60px 0; }
+    }
+    @media (max-width: 480px) {
+      .shell { width: calc(100% - 28px); }
+      .nav { gap: 13px; font-size: 11px; }
+      h1 { font-size: 51px; }
+      .hero-copy { font-size: 14px; }
+      .translator { padding: 17px; }
+      .translator-top { align-items: flex-start; }
+      .status { margin-top: 7px; }
+      .diagram-panel { padding: 13px; }
+      .codons { gap: 4px; }
+      .codon { min-width: 36px; padding: 7px 3px; font-size: 9px; }
+      .info-panel { grid-template-columns: 1fr; }
+      .explain-card { min-height: auto; }
+      .cards { grid-template-columns: 1fr; }
+      .organelle-image { height: 210px; }
+      .organelle-card:first-child .organelle-image img { max-height: 172px; }
+      .section-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .section-head p { font-size: 12px; }
+      footer .shell { flex-direction: column; gap: 6px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell topbar">
+    <a class="brand" href="#" aria-label="Cell Studio home"><span class="brand-mark">✳</span><span>cell studio</span></a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#translate">Translation lab</a>
+      <a href="#organelles">Organelles</a>
+    </nav>
+    <span class="class-tag">AP BIOLOGY · CELL UNIT</span>
+  </header>
+
+  <main>
+    <section class="shell hero" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">A tiny tour of a living cell</p>
+        <h1 id="hero-title">Small parts.<br><em>Big ideas.</em></h1>
+        <p class="hero-copy">Explore the cell’s protein-making machinery, then meet the organelles that keep the whole system running.</p>
+        <div class="hero-actions">
+          <a class="button" href="#translate">Enter the translation lab <span aria-hidden="true">&nbsp;↘</span></a>
+          <a class="button secondary" href="#organelles">Explore organelles</a>
+        </div>
+      </div>
+      <div class="hero-art">
+        <span class="art-index">CELL STUDY / 01</span>
+        <img src="ER%20with%20Nucleus.svg" alt="Illustration of the nucleus surrounded by endoplasmic reticulum">
+        <span class="art-label">Inside a eukaryotic cell</span>
+      </div>
+    </section>
+
+    <section class="shell" id="translate" aria-labelledby="translation-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Interactive lab</p>
+          <h2 id="translation-title">Build a protein</h2>
+        </div>
+        <p>Bring the messenger RNA to the ribosome. Then follow each codon as it becomes part of a growing protein.</p>
+      </div>
+
+      <div class="translator">
+        <div class="translator-top">
+          <div class="translator-title">
+            <span class="step-number">01</span>
+            <div><strong>Translation simulator</strong><small>Drag the mRNA strand into the ribosome</small></div>
+          </div>
+          <span class="status" id="status" aria-live="polite">Waiting for mRNA</span>
+        </div>
+
+        <div class="workspace">
+          <div>
+            <div class="diagram-panel">
+              <div class="diagram-caption"><span>Ribosome · translation site</span><span id="step-count">0 / 5 codons</span></div>
+              <div class="ribosome-stage" id="ribosome-stage">
+              <img class="assembled-art" src="Ribosome/Assembled-Translation.svg" alt="Ribosome during translation, with amino acids appearing as each codon is translated">
+              <div class="mrna-cover" id="mrna-cover" aria-hidden="true"></div>
+              <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop or select the mRNA strand to load it into the ribosome">Drop mRNA here</div>
+              <div class="chain" id="chain" aria-label="Growing amino acid chain"></div>
+              </div>
+              <div class="codons mrna-source" id="mrna-source" draggable="true" tabindex="0" role="button" aria-label="mRNA strand AUG GCU UUU GGA UAA. Drag into the ribosome or press Enter to load.">
+                <span class="codon">AUG</span><span class="codon">GCU</span><span class="codon">UUU</span><span class="codon">GGA</span><span class="codon stop">UAA</span>
+              </div>
+            </div>
+            <div class="controls">
+              <button class="control-btn primary" id="step-button" type="button" disabled>Translate next codon <span aria-hidden="true">→</span></button>
+              <button class="control-btn" id="play-button" type="button" disabled>▶ Play</button>
+              <button class="control-btn" id="reset-button" type="button">Reset</button>
+            </div>
+            <div class="translation-result" id="result" aria-live="polite">✓ Stop codon reached — the polypeptide is complete.</div>
+          </div>
+
+          <aside class="info-panel">
+            <div class="sequence-card">
+              <p class="mini-label">mRNA sequence · 5′ → 3′</p>
+              <div class="sequence" id="sequence">AUG GCU UUU GGA UAA</div>
+            </div>
+            <div class="explain-card">
+              <p class="mini-label" id="explain-label">What’s happening?</p>
+              <p id="explanation">Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons.</p>
+            </div>
+          </aside>
+        </div>
+        <div class="legend" aria-label="Diagram legend">
+          <span><i class="swatch"></i> Ribosome</span><span><i class="swatch orange"></i> mRNA</span><span><i class="swatch green"></i> Amino acid</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="shell organelles" id="organelles" aria-labelledby="organelles-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Meet the cell</p>
+          <h2 id="organelles-title">The supporting cast</h2>
+        </div>
+        <p>Each organelle has a specialized role. Together, they help the cell store information, build molecules, and stay organized.</p>
+      </div>
+      <div class="cards">
+        <article class="organelle-card">
+          <div class="organelle-image">
+            <img src="Nucleus.svg" alt="Illustration of a cell nucleus">
+          </div>
+          <div class="organelle-info">
+            <p class="organelle-label">01 · Information hub</p>
+            <h3>Nucleus</h3>
+            <p>The nucleus stores the cell’s DNA and helps regulate gene expression. Its instructions are copied into mRNA, which can travel out to a ribosome for translation.</p>
+          </div>
+        </article>
+        <article class="organelle-card">
+          <div class="organelle-image">
+            <img src="ER%20with%20Nucleus.svg" alt="Illustration of endoplasmic reticulum around the nucleus">
+          </div>
+          <div class="organelle-info">
+            <p class="organelle-label">02 · Synthesis &amp; transport</p>
+            <h3>Endoplasmic reticulum</h3>
+            <p>The ER is a membrane network. Rough ER, studded with ribosomes, helps fold and process proteins destined for membranes or secretion; smooth ER makes lipids and has other roles.</p>
+          </div>
+        </article>
+        <article class="organelle-card">
+          <div class="organelle-image">
+            <img src="Ribosome/Assembled.svg" alt="Assembled ribosome reading mRNA with tRNAs and a growing amino acid chain">
+          </div>
+          <div class="organelle-info">
+            <p class="organelle-label">03 · Protein builder</p>
+            <h3>Ribosome</h3>
+            <p>Ribosomes read mRNA codons and link amino acids into a polypeptide. They are essential to gene expression and can be free in the cytoplasm or attached to rough ER.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="shell"><span>Cell Studio · An AP Biology learning project</span><span>Created by Kenneth Pham</span><span>From genetic information to functional proteins</span></div></footer>
+
+  <script>
+    (() => {
+      const aminoAcids = [
+        { codon: "AUG", name: "Methionine (Met)" },
+        { codon: "GCU", name: "Alanine (Ala)" },
+        { codon: "UUU", name: "Phenylalanine (Phe)" },
+        { codon: "GGA", name: "Glycine (Gly)" }
+      ];
+      const codonElements = [...document.querySelectorAll(".codon")];
+      const dropzone = document.getElementById("dropzone");
+      const mrnaCover = document.getElementById("mrna-cover");
+      const mrnaSource = document.getElementById("mrna-source");
+      const stepButton = document.getElementById("step-button");
+      const playButton = document.getElementById("play-button");
+      const resetButton = document.getElementById("reset-button");
+      const status = document.getElementById("status");
+      const stepCount = document.getElementById("step-count");
+      const explanation = document.getElementById("explanation");
+      const explainLabel = document.getElementById("explain-label");
+      const chain = document.getElementById("chain");
+      const result = document.getElementById("result");
+      const chainPositions = [
+        { x: 165.5, y: 98.5, color: "#f21e1e" },
+        { x: 149.5, y: 86.5, color: "#451ef2" },
+        { x: 143.5, y: 67.5, color: "#1eeaf2" },
+        { x: 130.5, y: 54.5, color: "#c71ef2" }
+      ];
+      let loaded = false;
+      let translated = 0;
+      let playTimer;
+      let finishTimer;
+
+      function renderChain() {
+        chain.replaceChildren();
+        for (let index = 0; index < translated; index += 1) {
+          const position = chainPositions[index];
+          const bead = document.createElement("span");
+          bead.className = "amino-bead";
+          bead.style.left = `${position.x / 314 * 100}%`;
+          bead.style.top = `${position.y / 201 * 100}%`;
+          bead.style.backgroundColor = position.color;
+          bead.setAttribute("aria-label", aminoAcids[index].name);
+          bead.title = aminoAcids[index].name;
+          chain.append(bead);
+        }
+      }
+
+      renderChain();
+
+      function loadMrna() {
+        if (loaded) return;
+        loaded = true;
+        mrnaSource.draggable = false;
+        mrnaSource.classList.add("loaded");
+        mrnaSource.setAttribute("aria-label", "Loaded mRNA sequence: AUG GCU UUU GGA UAA");
+        dropzone.classList.add("loaded");
+        dropzone.hidden = true;
+        dropzone.textContent = "";
+        mrnaCover.hidden = true;
+        stepButton.disabled = false;
+        playButton.disabled = false;
+        status.textContent = "mRNA loaded";
+        status.classList.add("ready");
+        explainLabel.textContent = "Start codon";
+        explanation.textContent = "The ribosome finds AUG, the start codon. A tRNA with a complementary anticodon brings methionine, the first amino acid.";
+        codonElements[0].classList.add("active");
+      }
+
+      function finish() {
+        window.clearInterval(playTimer);
+        playTimer = undefined;
+        finishTimer = undefined;
+        stepButton.disabled = true;
+        playButton.disabled = true;
+        playButton.textContent = "▶ Play";
+        stepCount.textContent = "5 / 5 codons";
+        status.textContent = "Translation complete";
+        explainLabel.textContent = "Stop codon";
+        explanation.textContent = "UAA is a stop codon. A release factor ends translation and frees the completed polypeptide; the stop codon does not code for an amino acid.";
+        result.classList.add("visible");
+      }
+
+      function translateNext() {
+        if (!loaded || translated >= aminoAcids.length) return;
+        const aminoAcid = aminoAcids[translated];
+        translated += 1;
+        codonElements.forEach((codon, index) => codon.classList.toggle("active", index === translated));
+        renderChain();
+        stepCount.textContent = `${translated} / 5 codons`;
+        explainLabel.textContent = `${aminoAcid.codon} → ${aminoAcid.name}`;
+        explanation.textContent = `A matching tRNA pairs its anticodon with ${aminoAcid.codon} and delivers ${aminoAcid.name}. The ribosome links it to the growing polypeptide chain.`;
+        if (translated === aminoAcids.length) {
+          status.textContent = "Stop codon next";
+          explanation.textContent = "The ribosome has translated the four amino-acid codons. It now reaches UAA, a stop codon, which signals translation to end.";
+          explainLabel.textContent = "Next: stop codon";
+          codonElements[4].classList.add("active");
+          finishTimer = window.setTimeout(finish, 850);
+        }
+      }
+
+      function reset() {
+        window.clearInterval(playTimer);
+        window.clearTimeout(finishTimer);
+        playTimer = undefined;
+        finishTimer = undefined;
+        loaded = false;
+        translated = 0;
+        mrnaSource.draggable = true;
+        mrnaSource.classList.remove("loaded");
+        mrnaSource.setAttribute("aria-label", "mRNA strand AUG GCU UUU GGA UAA. Drag into the ribosome or press Enter to load.");
+        dropzone.hidden = false;
+        dropzone.classList.remove("loaded");
+        dropzone.textContent = "Drop mRNA here";
+        mrnaCover.hidden = false;
+        stepButton.disabled = true;
+        playButton.disabled = true;
+        playButton.textContent = "▶ Play";
+        status.textContent = "Waiting for mRNA";
+        status.classList.remove("ready");
+        stepCount.textContent = "0 / 5 codons";
+        explanation.textContent = "Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons.";
+        explainLabel.textContent = "What’s happening?";
+        renderChain();
+        result.classList.remove("visible");
+        codonElements.forEach(codon => codon.classList.remove("active"));
+      }
+
+      dropzone.addEventListener("dragover", event => {
+        event.preventDefault();
+        dropzone.classList.add("active");
+      });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("active"));
+      dropzone.addEventListener("drop", event => {
+        event.preventDefault();
+        dropzone.classList.remove("active");
+        loadMrna();
+      });
+      mrnaSource.addEventListener("dragstart", event => {
+        if (!event.dataTransfer) return;
+        event.dataTransfer.setData("text/plain", "mRNA");
+        event.dataTransfer.effectAllowed = "move";
+      });
+      mrnaSource.addEventListener("click", loadMrna);
+      mrnaSource.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          loadMrna();
+        }
+      });
+      dropzone.addEventListener("click", loadMrna);
+      dropzone.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          loadMrna();
+        }
+      });
+      stepButton.addEventListener("click", translateNext);
+      playButton.addEventListener("click", () => {
+        if (playTimer) {
+          window.clearInterval(playTimer);
+          playTimer = undefined;
+          playButton.textContent = "▶ Play";
+          return;
+        }
+        playButton.textContent = "Ⅱ Pause";
+        playTimer = window.setInterval(translateNext, 1150);
+      });
+      resetButton.addEventListener("click", reset);
+    })();
+  </script>
+</body>
+</html>

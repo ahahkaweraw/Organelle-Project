@@ -73,11 +73,22 @@
     .assembled-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     .mrna-cover { position: absolute; z-index: 1; left: 0; top: 66%; width: 86%; height: 7.5%; background: #f3f2eb; }
     .mrna-cover[hidden] { display: none; }
+    .strand-codons { position: absolute; z-index: 1; left: 44.75%; top: 66.7%; width: 85.7%; height: 7%; display: flex; align-items: center; background: #F3B359; pointer-events: none; transform: translateX(calc(var(--codon-index, 0) * -18.59%)); transition: transform 1.4s cubic-bezier(.2,.75,.25,1); will-change: transform; }
+    .strand-codons[hidden] { display: none; }
+    .strand-codon { flex: 0 0 18.59%; border-radius: 3px; color: #3e3529; text-align: center; font: 750 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .strand-codon.active { background: #fff8dc; color: #26351d; }
     .dropzone { position: absolute; z-index: 3; left: 0; top: 62%; width: 86%; height: 17%; display: grid; place-items: center; border: 1.5px dashed #b8b9a9; border-radius: 8px; background: #fffefa88; color: #596254; font-size: 10px; font-weight: 750; transition: .2s; }
     .dropzone[hidden] { display: none; }
     .dropzone.active { border-color: #718f3c; background: #edf4dc; color: #496126; }
     .chain { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
-    .amino-bead { position: absolute; z-index: 1; width: 6.05%; aspect-ratio: 1; border: 1px solid #f3f2eb; border-radius: 50%; transform: translate(-50%, -50%); animation: pop .35s both; }
+    .amino-bead { position: absolute; z-index: 1; width: 6.05%; aspect-ratio: 1; border: 1px solid #f3f2eb; border-radius: 50%; transform: translate(-50%, -50%); transition: left 1.5s cubic-bezier(.2,.75,.25,1), top 1.5s cubic-bezier(.2,.75,.25,1); }
+    .peptide-group { position: absolute; z-index: 5; inset: 0; pointer-events: none; transition: transform 1.5s cubic-bezier(.2,.75,.25,1); }
+    .trna-actor { position: absolute; z-index: 4; width: 14%; aspect-ratio: 44 / 39; opacity: 0; transition: left 1s cubic-bezier(.2,.75,.25,1), top 1s cubic-bezier(.2,.75,.25,1), opacity .3s ease, transform .3s ease; pointer-events: none; }
+    .trna-actor.exit-site { transform: rotate(-28deg); }
+    .trna-actor img { display: block; width: 100%; height: 100%; }
+    .anticodon-label { position: absolute; z-index: 1; left: 50%; bottom: 3%; width: 100%; transform: translateX(-50%); color: #fff; text-align: center; white-space: nowrap; font: 750 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: -.06em; text-shadow: 0 1px 1px #000; }
+    .incoming-amino { position: absolute; left: 51%; top: -1%; width: 43%; aspect-ratio: 1; border: 1px solid #f3f2eb; border-radius: 50%; transform: translate(-50%, -50%); }
+    .transfer-bead { position: absolute; z-index: 5; width: 6.05%; aspect-ratio: 1; border: 1px solid #f3f2eb; border-radius: 50%; transform: translate(-50%, -50%); transition: left 1.5s cubic-bezier(.2,.75,.25,1), top 1.5s cubic-bezier(.2,.75,.25,1); pointer-events: none; }
     @keyframes pop { from { opacity: 0; scale: .65; } to { opacity: 1; scale: 1; } }
     .codons { display: flex; gap: 6px; align-items: center; justify-content: center; }
     .mrna-source { position: relative; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; padding: 15px 9px 8px; border: 1px dashed #d9d6ca; border-radius: 12px; background: #fffefa; cursor: grab; }
@@ -99,7 +110,11 @@
     .sequence { color: #28332e; font: 700 11px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; word-spacing: 5px; }
     .sequence .focus { color: #6f8e36; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
     .explain-card { flex: 1; background: #f6f8ee; border-color: #e7ebda; }
-    .explain-card p:last-child { margin: 0; color: #606b60; font-size: 12px; line-height: 1.55; }
+    .explain-card #explanation { margin: 0; color: #606b60; font-size: 12px; line-height: 1.55; }
+    .explanation-navigation { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 14px; }
+    .explanation-navigation button { padding: 6px 9px; border: 1px solid #dfe4d3; border-radius: 999px; background: #fffefa; color: var(--ink); font-size: 10px; font-weight: 750; cursor: pointer; }
+    .explanation-navigation button:disabled { opacity: .45; cursor: not-allowed; }
+    .explanation-page-count { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
     .translation-result { display: none; align-items: center; gap: 7px; margin-top: 12px; color: #496127; font-size: 11px; font-weight: 750; }
     .translation-result.visible { display: flex; }
     .legend { display: flex; justify-content: center; gap: 18px; margin-top: 16px; color: var(--muted); font-size: 10px; }
@@ -219,6 +234,9 @@
               <div class="ribosome-stage" id="ribosome-stage">
               <img class="assembled-art" src="Ribosome/Assembled-Translation.svg" alt="Ribosome during translation, with amino acids appearing as each codon is translated">
               <div class="mrna-cover" id="mrna-cover" aria-hidden="true"></div>
+              <div class="strand-codons" id="strand-codons" aria-label="mRNA sequence on strand" hidden>
+                <span class="strand-codon">AUG</span><span class="strand-codon">GCU</span><span class="strand-codon">UUU</span><span class="strand-codon">GGA</span><span class="strand-codon">UAA</span>
+              </div>
               <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop or select the mRNA strand to load it into the ribosome">Drop mRNA here</div>
               <div class="chain" id="chain" aria-label="Growing amino acid chain"></div>
               </div>
@@ -241,7 +259,12 @@
             </div>
             <div class="explain-card">
               <p class="mini-label" id="explain-label">What’s happening?</p>
-              <p id="explanation">Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons.</p>
+              <p id="explanation" aria-live="polite">Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons.</p>
+              <div class="explanation-navigation" aria-label="Explanation pages">
+                <button id="explanation-previous" type="button" aria-label="Previous explanation page" disabled>← Previous</button>
+                <span class="explanation-page-count" id="explanation-page-count" aria-live="polite">1 / 1</span>
+                <button id="explanation-next" type="button" aria-label="Next explanation page" disabled>Next →</button>
+              </div>
             </div>
           </aside>
         </div>
@@ -299,12 +322,14 @@
   <script>
     (() => {
       const aminoAcids = [
-        { codon: "AUG", name: "Methionine (Met)" },
-        { codon: "GCU", name: "Alanine (Ala)" },
-        { codon: "UUU", name: "Phenylalanine (Phe)" },
-        { codon: "GGA", name: "Glycine (Gly)" }
+        { codon: "AUG", anticodon: "UAC", name: "Methionine (Met)" },
+        { codon: "GCU", anticodon: "CGA", name: "Alanine (Ala)" },
+        { codon: "UUU", anticodon: "AAA", name: "Phenylalanine (Phe)" },
+        { codon: "GGA", anticodon: "CCU", name: "Glycine (Gly)" }
       ];
       const codonElements = [...document.querySelectorAll(".codon")];
+      const strandCodons = document.getElementById("strand-codons");
+      const strandCodonElements = [...strandCodons.querySelectorAll(".strand-codon")];
       const dropzone = document.getElementById("dropzone");
       const mrnaCover = document.getElementById("mrna-cover");
       const mrnaSource = document.getElementById("mrna-source");
@@ -315,8 +340,15 @@
       const stepCount = document.getElementById("step-count");
       const explanation = document.getElementById("explanation");
       const explainLabel = document.getElementById("explain-label");
+      const previousExplanationButton = document.getElementById("explanation-previous");
+      const nextExplanationButton = document.getElementById("explanation-next");
+      const explanationPageCount = document.getElementById("explanation-page-count");
       const chain = document.getElementById("chain");
       const result = document.getElementById("result");
+      const initialExplanation = {
+        label: "What’s happening?",
+        text: "Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons."
+      };
       const chainPositions = [
         { x: 165.5, y: 98.5, color: "#f21e1e" },
         { x: 149.5, y: 86.5, color: "#451ef2" },
@@ -325,25 +357,253 @@
       ];
       let loaded = false;
       let translated = 0;
+      let translating = false;
+      let peptidylTrna;
+      let peptideGroup;
+      let animationToken = 0;
+      let explanationPages = [initialExplanation];
+      let animationSnapshots = [];
+      let currentExplanationPage = 0;
+      let lastStableSnapshotIndex = -1;
+      let needsReplay = false;
+      let isPlaying = false;
       let playTimer;
       let finishTimer;
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const arrivalDuration = prefersReducedMotion ? 0 : 1600;
+      const transferDuration = prefersReducedMotion ? 0 : 1500;
+      const releaseDuration = prefersReducedMotion ? 0 : 1400;
+      const arrivalPause = prefersReducedMotion ? 1800 : arrivalDuration;
+      const transferPause = prefersReducedMotion ? 1800 : transferDuration;
+      const readingPause = 2000;
+      const releasePause = 1400;
+      const codonPause = 1300;
+      const translocationDuration = releaseDuration;
+      const pSitePosition = { left: 143, top: 99 };
+      const aSitePosition = { left: 193, top: 99 };
+      const exitPosition = { left: -35, top: 92 };
+
+      function wait(duration) {
+        return new Promise(resolve => window.setTimeout(resolve, duration));
+      }
+
+      function renderExplanationPage() {
+        const page = explanationPages[currentExplanationPage];
+        explainLabel.textContent = page.label;
+        explanation.textContent = page.text;
+        explanationPageCount.textContent = `${currentExplanationPage + 1} / ${explanationPages.length}`;
+        previousExplanationButton.disabled = currentExplanationPage === 0;
+        nextExplanationButton.disabled = currentExplanationPage === explanationPages.length - 1;
+      }
+
+      function addExplanationPage(label, text) {
+        if (currentExplanationPage < explanationPages.length - 1) {
+          explanationPages.splice(currentExplanationPage + 1);
+          animationSnapshots.splice(currentExplanationPage + 1);
+        }
+        explanationPages.push({ label, text });
+        animationSnapshots.push(captureAnimationSnapshot());
+        currentExplanationPage = explanationPages.length - 1;
+        if (animationSnapshots.at(-1).stable) lastStableSnapshotIndex = currentExplanationPage;
+        renderExplanationPage();
+      }
+
+      function captureAnimationSnapshot() {
+        return {
+          chain: chain.innerHTML,
+          loaded,
+          translated,
+          stepCount: stepCount.textContent,
+          status: status.textContent,
+          statusReady: status.classList.contains("ready"),
+          activeCodonIndices: codonElements
+            .map((codon, index) => codon.classList.contains("active") ? index : -1)
+            .filter(index => index !== -1),
+          activeStrandCodonIndices: strandCodonElements
+            .map((codon, index) => codon.classList.contains("active") ? index : -1)
+            .filter(index => index !== -1),
+          mrnaIndex: strandCodons.style.getPropertyValue("--codon-index"),
+          resultVisible: result.classList.contains("visible"),
+          stepDisabled: stepButton.disabled,
+          playDisabled: playButton.disabled,
+          stable: loaded && !translating && translated < aminoAcids.length
+        };
+      }
+
+      function restoreAnimationSnapshot(index) {
+        const snapshot = animationSnapshots[index];
+        if (!snapshot) return;
+        animationToken += 1;
+        window.clearTimeout(playTimer);
+        window.clearTimeout(finishTimer);
+        playTimer = undefined;
+        finishTimer = undefined;
+        isPlaying = false;
+        translating = false;
+        needsReplay = !snapshot.stable;
+        playButton.textContent = "▶ Play";
+        loaded = snapshot.loaded;
+        translated = snapshot.translated;
+        chain.innerHTML = snapshot.chain;
+        peptideGroup = chain.querySelector(".peptide-group") || undefined;
+        peptidylTrna = chain.querySelector('.trna-actor[data-role="peptidyl"]') || undefined;
+        status.textContent = snapshot.status;
+        status.classList.toggle("ready", snapshot.statusReady);
+        stepCount.textContent = snapshot.stepCount;
+        codonElements.forEach((codon, codonIndex) => {
+          codon.classList.toggle("active", snapshot.activeCodonIndices.includes(codonIndex));
+        });
+        strandCodonElements.forEach((codon, codonIndex) => {
+          codon.classList.toggle("active", snapshot.activeStrandCodonIndices.includes(codonIndex));
+        });
+        strandCodons.style.setProperty("--codon-index", snapshot.mrnaIndex || "0");
+        strandCodons.hidden = !loaded;
+        dropzone.hidden = loaded;
+        mrnaCover.hidden = loaded;
+        mrnaSource.draggable = !loaded;
+        mrnaSource.classList.toggle("loaded", loaded);
+        mrnaSource.setAttribute("aria-label", loaded
+          ? "Loaded mRNA sequence: AUG GCU UUU GGA UAA"
+          : "mRNA strand AUG GCU UUU GGA UAA. Drag into the ribosome or press Enter to load.");
+        result.classList.toggle("visible", snapshot.resultVisible);
+        stepButton.disabled = snapshot.stepDisabled && !needsReplay;
+        playButton.disabled = snapshot.playDisabled;
+        currentExplanationPage = index;
+        lastStableSnapshotIndex = animationSnapshots.reduce(
+          (latest, saved, savedIndex) => savedIndex <= index && saved.stable ? savedIndex : latest,
+          -1
+        );
+        renderExplanationPage();
+      }
+
+      function resetExplanationPages() {
+        explanationPages = [initialExplanation];
+        currentExplanationPage = 0;
+        animationSnapshots = [captureAnimationSnapshot()];
+        lastStableSnapshotIndex = -1;
+        needsReplay = false;
+        renderExplanationPage();
+      }
+
+      function positionMrna(codonIndex, animate = true) {
+        strandCodons.style.transitionDuration = animate && !prefersReducedMotion
+          ? `${translocationDuration}ms`
+          : "0ms";
+        strandCodons.style.setProperty("--codon-index", Math.max(0, codonIndex - 1));
+      }
+
+      function createAminoBead(aminoAcidIndex, positionIndex) {
+        const position = chainPositions[positionIndex];
+        const bead = document.createElement("span");
+        bead.className = "amino-bead";
+        bead.style.left = `${position.x / 314 * 100}%`;
+        bead.style.top = `${position.y / 201 * 100}%`;
+        bead.style.backgroundColor = chainPositions[aminoAcidIndex].color;
+        bead.dataset.aminoAcidIndex = aminoAcidIndex;
+        bead.setAttribute("aria-label", aminoAcids[aminoAcidIndex].name);
+        bead.title = aminoAcids[aminoAcidIndex].name;
+        return bead;
+      }
 
       function renderChain() {
         chain.replaceChildren();
-        for (let index = 0; index < translated; index += 1) {
-          const position = chainPositions[index];
-          const bead = document.createElement("span");
-          bead.className = "amino-bead";
-          bead.style.left = `${position.x / 314 * 100}%`;
-          bead.style.top = `${position.y / 201 * 100}%`;
-          bead.style.backgroundColor = position.color;
-          bead.setAttribute("aria-label", aminoAcids[index].name);
-          bead.title = aminoAcids[index].name;
-          chain.append(bead);
-        }
+        peptideGroup = undefined;
       }
 
+      function moveTrna(actor, position, duration, opacity = "1") {
+        actor.style.transitionDuration = `${duration}ms, ${duration}ms, ${duration}ms, ${duration}ms`;
+        actor.style.left = `${position.left / 314 * 100}%`;
+        actor.style.top = `${position.top / 201 * 100}%`;
+        actor.style.opacity = opacity;
+      }
+
+      function attachInitiatorPeptide(actor, aminoAcidIndex) {
+        const amino = actor.querySelector(".incoming-amino");
+        if (!amino) return;
+        amino.style.opacity = "0";
+        peptideGroup = document.createElement("div");
+        peptideGroup.className = "peptide-group";
+        peptideGroup.style.transitionDuration = `${transferDuration}ms`;
+        peptideGroup.append(createAminoBead(aminoAcidIndex, 0));
+        chain.append(peptideGroup);
+      }
+
+      function transferPeptideToTrna(actor, aminoAcidIndex) {
+        const amino = actor.querySelector(".incoming-amino");
+        if (!amino || !peptideGroup) return;
+        const bead = createAminoBead(aminoAcidIndex, 0);
+        bead.style.left = `${(chainPositions[0].x + 50) / 314 * 100}%`;
+        bead.style.transitionDuration = `${transferDuration}ms, ${transferDuration}ms`;
+        peptideGroup.append(bead);
+        amino.style.opacity = "0";
+
+        peptideGroup.style.transitionDuration = `${transferDuration}ms`;
+        peptideGroup.style.transform = "translateX(0)";
+        void peptideGroup.offsetWidth;
+        peptideGroup.querySelectorAll(".amino-bead").forEach(chainBead => {
+          const index = Number(chainBead.dataset.aminoAcidIndex);
+          const position = chainPositions[translated - index];
+          chainBead.style.left = `${position.x / 314 * 100}%`;
+          chainBead.style.top = `${position.y / 201 * 100}%`;
+          chainBead.style.transitionDuration = `${transferDuration}ms, ${transferDuration}ms`;
+        });
+        peptideGroup.style.transform = "translateX(15.92%)";
+      }
+
+      function completeCodon(aminoAcidIndex, isInitiation = false) {
+        translated += 1;
+        stepCount.textContent = `${translated} / 5 codons`;
+        codonElements.forEach((codon, index) => codon.classList.toggle("active", index === translated));
+        strandCodonElements.forEach((codon, index) => codon.classList.toggle("active", index === translated));
+        status.textContent = translated === aminoAcids.length ? "Stop codon next" : "tRNA released";
+        translating = false;
+        if (translated === aminoAcids.length) {
+          codonElements[4].classList.add("active");
+          strandCodonElements[4].classList.add("active");
+          stepButton.disabled = true;
+          isPlaying = false;
+          playButton.textContent = "▶ Play";
+          finishTimer = window.setTimeout(finish, 1400);
+        } else {
+          stepButton.disabled = isPlaying;
+          if (isPlaying) playTimer = window.setTimeout(() => {
+            playTimer = undefined;
+            translateNext();
+          }, codonPause);
+        }
+        addExplanationPage(translated === aminoAcids.length ? "Next: stop codon" : `${aminoAcids[aminoAcidIndex].codon} → ${aminoAcids[aminoAcidIndex].name}`, translated === aminoAcids.length
+          ? "The ribosome has translated the four amino-acid codons. It now reaches UAA, a stop codon, which signals translation to end."
+          : isInitiation
+            ? "The initiator tRNA holds methionine in the P site. The next codon is positioned in the A site for the next tRNA."
+            : "The new peptide bond is complete. The growing peptide is attached to the tRNA in the P site, and the next codon is ready in the A site.");
+      }
+
+      function createTrnaActor(aminoAcid) {
+        const actor = document.createElement("div");
+        actor.className = "trna-actor";
+        actor.dataset.role = "incoming";
+        actor.setAttribute("aria-hidden", "true");
+        actor.style.transitionDuration = prefersReducedMotion
+          ? "0ms"
+          : `${arrivalDuration}ms, ${arrivalDuration}ms, 300ms`;
+        const trna = document.createElement("img");
+        trna.src = "Ribosome/tRNA.svg";
+        trna.alt = "";
+        const amino = document.createElement("span");
+        amino.className = "incoming-amino";
+        amino.style.backgroundColor = aminoAcid.color;
+        const anticodon = document.createElement("span");
+        anticodon.className = "anticodon-label";
+        anticodon.textContent = `3′ ${aminoAcid.anticodon} 5′`;
+        anticodon.title = `Anticodon 3′-${aminoAcid.anticodon}-5′`;
+        actor.append(trna, amino, anticodon);
+        return actor;
+      }
+
+      renderExplanationPage();
+      positionMrna(0, false);
       renderChain();
+      animationSnapshots = [captureAnimationSnapshot()];
 
       function loadMrna() {
         if (loaded) return;
@@ -355,52 +615,114 @@
         dropzone.hidden = true;
         dropzone.textContent = "";
         mrnaCover.hidden = true;
+        positionMrna(0, false);
+        strandCodons.hidden = false;
         stepButton.disabled = false;
         playButton.disabled = false;
         status.textContent = "mRNA loaded";
         status.classList.add("ready");
-        explainLabel.textContent = "Start codon";
-        explanation.textContent = "The ribosome finds AUG, the start codon. A tRNA with a complementary anticodon brings methionine, the first amino acid.";
         codonElements[0].classList.add("active");
+        strandCodonElements[0].classList.add("active");
+        addExplanationPage("Start codon", "The ribosome finds AUG, the start codon. A tRNA with a complementary anticodon brings methionine, the first amino acid.");
       }
 
       function finish() {
-        window.clearInterval(playTimer);
+        window.clearTimeout(playTimer);
         playTimer = undefined;
         finishTimer = undefined;
+        peptidylTrna?.remove();
+        peptidylTrna = undefined;
+        isPlaying = false;
         stepButton.disabled = true;
         playButton.disabled = true;
         playButton.textContent = "▶ Play";
         stepCount.textContent = "5 / 5 codons";
         status.textContent = "Translation complete";
-        explainLabel.textContent = "Stop codon";
-        explanation.textContent = "UAA is a stop codon. A release factor ends translation and frees the completed polypeptide; the stop codon does not code for an amino acid.";
         result.classList.add("visible");
+        addExplanationPage("Stop codon", "UAA is a stop codon. A release factor ends translation and frees the completed polypeptide; the stop codon does not code for an amino acid.");
       }
 
-      function translateNext() {
-        if (!loaded || translated >= aminoAcids.length) return;
-        const aminoAcid = aminoAcids[translated];
-        translated += 1;
-        codonElements.forEach((codon, index) => codon.classList.toggle("active", index === translated));
-        renderChain();
-        stepCount.textContent = `${translated} / 5 codons`;
-        explainLabel.textContent = `${aminoAcid.codon} → ${aminoAcid.name}`;
-        explanation.textContent = `A matching tRNA pairs its anticodon with ${aminoAcid.codon} and delivers ${aminoAcid.name}. The ribosome links it to the growing polypeptide chain.`;
-        if (translated === aminoAcids.length) {
-          status.textContent = "Stop codon next";
-          explanation.textContent = "The ribosome has translated the four amino-acid codons. It now reaches UAA, a stop codon, which signals translation to end.";
-          explainLabel.textContent = "Next: stop codon";
-          codonElements[4].classList.add("active");
-          finishTimer = window.setTimeout(finish, 850);
+      async function translateNext() {
+        if (!loaded || translating || translated >= aminoAcids.length) return;
+        if (needsReplay) {
+          const shouldResumePlayback = isPlaying;
+          restoreAnimationSnapshot(lastStableSnapshotIndex);
+          animationSnapshots.splice(currentExplanationPage + 1);
+          explanationPages.splice(currentExplanationPage + 1);
+          isPlaying = shouldResumePlayback;
+          playButton.textContent = isPlaying ? "Ⅱ Pause" : "▶ Play";
+          renderExplanationPage();
         }
+        translating = true;
+        stepButton.disabled = true;
+        const token = ++animationToken;
+        const aminoAcidIndex = translated;
+        const aminoAcid = aminoAcids[translated];
+        const beadPosition = chainPositions[translated];
+        const actor = createTrnaActor({ ...aminoAcid, color: beadPosition.color });
+        const isInitiation = aminoAcidIndex === 0;
+
+        status.textContent = "tRNA approaching";
+        addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, `Watch the new tRNA bring ${aminoAcid.name} toward the ribosome. It will match with the ${aminoAcid.codon} codon.`);
+        actor.style.left = "92%";
+        actor.style.top = "5%";
+        chain.append(actor);
+        await wait(50);
+        if (token !== animationToken) return;
+        moveTrna(actor, isInitiation ? pSitePosition : aSitePosition, arrivalDuration);
+        await wait(arrivalPause);
+        if (token !== animationToken) return;
+
+        status.textContent = "codon matched";
+        addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, `The tRNA anticodon 3′-${aminoAcid.anticodon}-5′ pairs with the mRNA codon 5′-${aminoAcid.codon}-3′. ${aminoAcid.name} remains attached to its tRNA in the ribosome.`);
+        await wait(readingPause);
+        if (token !== animationToken) return;
+
+        if (isInitiation) {
+          attachInitiatorPeptide(actor, aminoAcidIndex);
+          peptidylTrna = actor;
+          actor.dataset.role = "peptidyl";
+          positionMrna(1);
+          completeCodon(aminoAcidIndex, true);
+          return;
+        }
+
+        status.textContent = "peptide bond forming";
+        addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, "A peptide bond forms. The growing peptide transfers from the P-site tRNA to the amino acid carried by the A-site tRNA; it does not float free between them.");
+        transferPeptideToTrna(actor, aminoAcidIndex);
+        await wait(transferPause);
+        if (token !== animationToken) return;
+        await wait(readingPause);
+        if (token !== animationToken) return;
+
+        status.textContent = "ribosome advancing";
+        addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, "The ribosome shifts one codon. The peptide-carrying tRNA moves from A to P, while the now-empty tRNA leaves the ribosome to the left.");
+        moveTrna(actor, pSitePosition, releaseDuration);
+        peptideGroup.style.transitionDuration = `${releaseDuration}ms`;
+        peptideGroup.style.transform = "translateX(0)";
+        positionMrna(aminoAcidIndex + 1);
+        moveTrna(peptidylTrna, exitPosition, releaseDuration, "0");
+        peptidylTrna.classList.add("exit-site");
+        peptidylTrna.dataset.role = "exit";
+        await wait(releaseDuration);
+        if (token !== animationToken) return;
+        await wait(releasePause);
+        if (token !== animationToken) return;
+
+        peptidylTrna.remove();
+        peptidylTrna = actor;
+        actor.dataset.role = "peptidyl";
+        completeCodon(aminoAcidIndex);
       }
 
       function reset() {
-        window.clearInterval(playTimer);
+        animationToken += 1;
+        window.clearTimeout(playTimer);
         window.clearTimeout(finishTimer);
         playTimer = undefined;
         finishTimer = undefined;
+        translating = false;
+        isPlaying = false;
         loaded = false;
         translated = 0;
         mrnaSource.draggable = true;
@@ -410,17 +732,20 @@
         dropzone.classList.remove("loaded");
         dropzone.textContent = "Drop mRNA here";
         mrnaCover.hidden = false;
+        positionMrna(0, false);
+        strandCodons.hidden = true;
         stepButton.disabled = true;
         playButton.disabled = true;
         playButton.textContent = "▶ Play";
         status.textContent = "Waiting for mRNA";
         status.classList.remove("ready");
         stepCount.textContent = "0 / 5 codons";
-        explanation.textContent = "Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons.";
-        explainLabel.textContent = "What’s happening?";
+        resetExplanationPages();
         renderChain();
         result.classList.remove("visible");
+        peptidylTrna = undefined;
         codonElements.forEach(codon => codon.classList.remove("active"));
+        strandCodonElements.forEach(codon => codon.classList.remove("active"));
       }
 
       dropzone.addEventListener("dragover", event => {
@@ -453,15 +778,27 @@
         }
       });
       stepButton.addEventListener("click", translateNext);
+      previousExplanationButton.addEventListener("click", () => {
+        if (currentExplanationPage === 0) return;
+        restoreAnimationSnapshot(currentExplanationPage - 1);
+      });
+      nextExplanationButton.addEventListener("click", () => {
+        if (currentExplanationPage >= explanationPages.length - 1) return;
+        restoreAnimationSnapshot(currentExplanationPage + 1);
+      });
       playButton.addEventListener("click", () => {
-        if (playTimer) {
-          window.clearInterval(playTimer);
+        if (isPlaying) {
+          isPlaying = false;
+          window.clearTimeout(playTimer);
           playTimer = undefined;
           playButton.textContent = "▶ Play";
+          if (!translating && translated < aminoAcids.length) stepButton.disabled = false;
           return;
         }
+        isPlaying = true;
+        stepButton.disabled = true;
         playButton.textContent = "Ⅱ Pause";
-        playTimer = window.setInterval(translateNext, 1150);
+        if (!translating) translateNext();
       });
       resetButton.addEventListener("click", reset);
     })();

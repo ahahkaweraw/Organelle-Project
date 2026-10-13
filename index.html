@@ -104,6 +104,12 @@
     .control-btn { min-height: 37px; padding: 0 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--white); color: var(--ink); font-size: 11px; font-weight: 750; cursor: pointer; }
     .control-btn.primary { border-color: var(--ink); background: var(--ink); color: white; }
     .control-btn:disabled { opacity: .42; cursor: not-allowed; }
+    .speed-control { display: flex; align-items: center; gap: 9px; margin-top: 12px; color: var(--muted); font-size: 11px; }
+    .speed-control label { font-weight: 750; }
+    .speed-control input { width: 120px; accent-color: #718f3c; cursor: pointer; }
+    .speed-control output { min-width: 30px; color: var(--ink); font-size: 10px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .speed-reset { padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--white); color: var(--ink); font-size: 10px; font-weight: 700; cursor: pointer; }
+    .speed-reset:disabled { opacity: .45; cursor: not-allowed; }
     .info-panel { display: flex; flex-direction: column; gap: 12px; }
     .sequence-card, .explain-card { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: #fffefa; }
     .mini-label { margin: 0 0 10px; color: #7b837a; font-size: 9px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
@@ -249,6 +255,12 @@
               <button class="control-btn" id="play-button" type="button" disabled>▶ Play</button>
               <button class="control-btn" id="reset-button" type="button">Reset</button>
             </div>
+            <div class="speed-control">
+              <label for="speed-slider">Animation speed</label>
+              <input id="speed-slider" type="range" min="0.5" max="3" step="0.25" value="1" aria-describedby="speed-value">
+              <output id="speed-value" for="speed-slider">1×</output>
+              <button class="speed-reset" id="speed-reset" type="button" disabled>Reset speed</button>
+            </div>
             <div class="translation-result" id="result" aria-live="polite">✓ Stop codon reached — the polypeptide is complete.</div>
           </div>
 
@@ -260,10 +272,10 @@
             <div class="explain-card">
               <p class="mini-label" id="explain-label">What’s happening?</p>
               <p id="explanation" aria-live="polite">Translation starts when the ribosome binds the mRNA. Drop the strand into the ribosome to begin reading its codons.</p>
-              <div class="explanation-navigation" aria-label="Explanation pages">
+              <div class="explanation-navigation" aria-label="Animation steps and explanations">
                 <button id="explanation-previous" type="button" aria-label="Previous explanation page" disabled>← Previous</button>
                 <span class="explanation-page-count" id="explanation-page-count" aria-live="polite">1 / 1</span>
-                <button id="explanation-next" type="button" aria-label="Next explanation page" disabled>Next →</button>
+                <button id="explanation-next" type="button" aria-label="Next animation step or explanation page" disabled>Next →</button>
               </div>
             </div>
           </aside>
@@ -386,6 +398,9 @@
       const stepButton = document.getElementById("step-button");
       const playButton = document.getElementById("play-button");
       const resetButton = document.getElementById("reset-button");
+      const speedSlider = document.getElementById("speed-slider");
+      const speedValue = document.getElementById("speed-value");
+      const speedResetButton = document.getElementById("speed-reset");
       const status = document.getElementById("status");
       const stepCount = document.getElementById("step-count");
       const explanation = document.getElementById("explanation");
@@ -416,25 +431,58 @@
       let currentExplanationPage = 0;
       let lastStableSnapshotIndex = -1;
       let needsReplay = false;
+      let manualStepMode = false;
+      let advanceRequested = false;
+      let releaseStageWait;
       let isPlaying = false;
       let playTimer;
       let finishTimer;
       const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const arrivalDuration = prefersReducedMotion ? 0 : 1600;
-      const transferDuration = prefersReducedMotion ? 0 : 1500;
-      const releaseDuration = prefersReducedMotion ? 0 : 1400;
-      const arrivalPause = prefersReducedMotion ? 1800 : arrivalDuration;
-      const transferPause = prefersReducedMotion ? 1800 : transferDuration;
-      const readingPause = 2000;
-      const releasePause = 1400;
-      const codonPause = 1300;
-      const translocationDuration = releaseDuration;
+      const speedBaseline = 2;
       const pSitePosition = { left: 143, top: 99 };
       const aSitePosition = { left: 193, top: 99 };
       const exitPosition = { left: -35, top: 92 };
 
+      function scaledDuration(baseDuration) {
+        return prefersReducedMotion ? 0 : Math.round(baseDuration / (speedBaseline * Number(speedSlider.value)));
+      }
+
+      function scaledPause(baseDuration) {
+        return Math.round(baseDuration / (speedBaseline * Number(speedSlider.value)));
+      }
+
+      function updateSpeedValue() {
+        const speed = Number(speedSlider.value);
+        speedValue.textContent = `${speed}×`;
+        speedSlider.setAttribute("aria-valuetext", `${speed} times speed`);
+        speedResetButton.disabled = speed === 1;
+      }
+
       function wait(duration) {
         return new Promise(resolve => window.setTimeout(resolve, duration));
+      }
+
+      async function waitForStage(duration) {
+        await wait(duration);
+        if (!manualStepMode) return;
+        if (advanceRequested) {
+          advanceRequested = false;
+          return;
+        }
+        await new Promise(resolve => {
+          releaseStageWait = resolve;
+        });
+        releaseStageWait = undefined;
+      }
+
+      function releaseManualStage() {
+        if (releaseStageWait) {
+          const release = releaseStageWait;
+          releaseStageWait = undefined;
+          release();
+        } else {
+          advanceRequested = true;
+        }
       }
 
       function renderExplanationPage() {
@@ -443,7 +491,8 @@
         explanation.textContent = page.text;
         explanationPageCount.textContent = `${currentExplanationPage + 1} / ${explanationPages.length}`;
         previousExplanationButton.disabled = currentExplanationPage === 0;
-        nextExplanationButton.disabled = currentExplanationPage === explanationPages.length - 1;
+        nextExplanationButton.disabled = currentExplanationPage === explanationPages.length - 1
+          && (!loaded || result.classList.contains("visible"));
       }
 
       function addExplanationPage(label, text) {
@@ -484,6 +533,10 @@
         const snapshot = animationSnapshots[index];
         if (!snapshot) return;
         animationToken += 1;
+        releaseStageWait?.();
+        releaseStageWait = undefined;
+        advanceRequested = false;
+        manualStepMode = false;
         window.clearTimeout(playTimer);
         window.clearTimeout(finishTimer);
         playTimer = undefined;
@@ -532,12 +585,16 @@
         animationSnapshots = [captureAnimationSnapshot()];
         lastStableSnapshotIndex = -1;
         needsReplay = false;
+        manualStepMode = false;
+        advanceRequested = false;
+        releaseStageWait?.();
+        releaseStageWait = undefined;
         renderExplanationPage();
       }
 
       function positionMrna(codonIndex, animate = true) {
         strandCodons.style.transitionDuration = animate && !prefersReducedMotion
-          ? `${translocationDuration}ms`
+          ? `${scaledDuration(1400)}ms`
           : "0ms";
         strandCodons.style.setProperty("--codon-index", Math.max(0, codonIndex - 1));
       }
@@ -573,7 +630,7 @@
         amino.style.opacity = "0";
         peptideGroup = document.createElement("div");
         peptideGroup.className = "peptide-group";
-        peptideGroup.style.transitionDuration = `${transferDuration}ms`;
+        peptideGroup.style.transitionDuration = `${scaledDuration(1500)}ms`;
         peptideGroup.append(createAminoBead(aminoAcidIndex, 0));
         chain.append(peptideGroup);
       }
@@ -583,11 +640,11 @@
         if (!amino || !peptideGroup) return;
         const bead = createAminoBead(aminoAcidIndex, 0);
         bead.style.left = `${(chainPositions[0].x + 50) / 314 * 100}%`;
-        bead.style.transitionDuration = `${transferDuration}ms, ${transferDuration}ms`;
+        bead.style.transitionDuration = `${scaledDuration(1500)}ms, ${scaledDuration(1500)}ms`;
         peptideGroup.append(bead);
         amino.style.opacity = "0";
 
-        peptideGroup.style.transitionDuration = `${transferDuration}ms`;
+        peptideGroup.style.transitionDuration = `${scaledDuration(1500)}ms`;
         peptideGroup.style.transform = "translateX(0)";
         void peptideGroup.offsetWidth;
         peptideGroup.querySelectorAll(".amino-bead").forEach(chainBead => {
@@ -595,7 +652,7 @@
           const position = chainPositions[translated - index];
           chainBead.style.left = `${position.x / 314 * 100}%`;
           chainBead.style.top = `${position.y / 201 * 100}%`;
-          chainBead.style.transitionDuration = `${transferDuration}ms, ${transferDuration}ms`;
+          chainBead.style.transitionDuration = `${scaledDuration(1500)}ms, ${scaledDuration(1500)}ms`;
         });
         peptideGroup.style.transform = "translateX(15.92%)";
       }
@@ -613,13 +670,13 @@
           stepButton.disabled = true;
           isPlaying = false;
           playButton.textContent = "▶ Play";
-          finishTimer = window.setTimeout(finish, 1400);
+          if (!manualStepMode) finishTimer = window.setTimeout(finish, scaledPause(1400));
         } else {
           stepButton.disabled = isPlaying;
           if (isPlaying) playTimer = window.setTimeout(() => {
             playTimer = undefined;
             translateNext();
-          }, codonPause);
+          }, scaledPause(1300));
         }
         addExplanationPage(translated === aminoAcids.length ? "Next: stop codon" : `${aminoAcids[aminoAcidIndex].codon} → ${aminoAcids[aminoAcidIndex].name}`, translated === aminoAcids.length
           ? "The ribosome has translated the four amino-acid codons. It now reaches UAA, a stop codon, which signals translation to end."
@@ -633,9 +690,7 @@
         actor.className = "trna-actor";
         actor.dataset.role = "incoming";
         actor.setAttribute("aria-hidden", "true");
-        actor.style.transitionDuration = prefersReducedMotion
-          ? "0ms"
-          : `${arrivalDuration}ms, ${arrivalDuration}ms, 300ms`;
+        actor.style.transitionDuration = `${scaledDuration(1600)}ms, ${scaledDuration(1600)}ms, ${scaledDuration(300)}ms`;
         const trna = document.createElement("img");
         trna.src = "Ribosome/tRNA.svg";
         trna.alt = "";
@@ -651,6 +706,7 @@
       }
 
       renderExplanationPage();
+      updateSpeedValue();
       positionMrna(0, false);
       renderChain();
       animationSnapshots = [captureAnimationSnapshot()];
@@ -676,10 +732,20 @@
         addExplanationPage("Start codon", "The ribosome finds AUG, the start codon. A tRNA with a complementary anticodon brings methionine, the first amino acid.");
       }
 
-      function finish() {
+      async function finish() {
         window.clearTimeout(playTimer);
         playTimer = undefined;
         finishTimer = undefined;
+        translating = true;
+        const token = animationToken;
+        if (peptidylTrna) {
+          status.textContent = "tRNA released";
+          moveTrna(peptidylTrna, exitPosition, scaledDuration(1400), "0");
+          peptidylTrna.classList.add("exit-site");
+          peptidylTrna.dataset.role = "exit";
+          await waitForStage(scaledPause(1400));
+          if (token !== animationToken) return;
+        }
         peptidylTrna?.remove();
         peptidylTrna = undefined;
         isPlaying = false;
@@ -689,17 +755,20 @@
         stepCount.textContent = "5 / 5 codons";
         status.textContent = "Translation complete";
         result.classList.add("visible");
-        addExplanationPage("Stop codon", "UAA is a stop codon. A release factor ends translation and frees the completed polypeptide; the stop codon does not code for an amino acid.");
+        translating = false;
+        addExplanationPage("Stop codon", "UAA is a stop codon. A release factor ends translation, the final empty tRNA leaves the ribosome, and the completed polypeptide is freed. The stop codon does not code for an amino acid.");
       }
 
       async function translateNext() {
         if (!loaded || translating || translated >= aminoAcids.length) return;
         if (needsReplay) {
           const shouldResumePlayback = isPlaying;
+          const shouldResumeManualStepping = manualStepMode;
           restoreAnimationSnapshot(lastStableSnapshotIndex);
           animationSnapshots.splice(currentExplanationPage + 1);
           explanationPages.splice(currentExplanationPage + 1);
           isPlaying = shouldResumePlayback;
+          manualStepMode = shouldResumeManualStepping;
           playButton.textContent = isPlaying ? "Ⅱ Pause" : "▶ Play";
           renderExplanationPage();
         }
@@ -719,13 +788,13 @@
         chain.append(actor);
         await wait(50);
         if (token !== animationToken) return;
-        moveTrna(actor, isInitiation ? pSitePosition : aSitePosition, arrivalDuration);
-        await wait(arrivalPause);
+        moveTrna(actor, isInitiation ? pSitePosition : aSitePosition, scaledDuration(1600));
+        await waitForStage(scaledPause(prefersReducedMotion ? 1800 : 1600));
         if (token !== animationToken) return;
 
         status.textContent = "codon matched";
         addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, `The tRNA anticodon 3′-${aminoAcid.anticodon}-5′ pairs with the mRNA codon 5′-${aminoAcid.codon}-3′. ${aminoAcid.name} remains attached to its tRNA in the ribosome.`);
-        await wait(readingPause);
+        await waitForStage(scaledPause(2000));
         if (token !== animationToken) return;
 
         if (isInitiation) {
@@ -740,24 +809,28 @@
         status.textContent = "peptide bond forming";
         addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, "A peptide bond forms. The growing peptide transfers from the P-site tRNA to the amino acid carried by the A-site tRNA; it does not float free between them.");
         transferPeptideToTrna(actor, aminoAcidIndex);
-        await wait(transferPause);
+        await waitForStage(scaledPause(prefersReducedMotion ? 1800 : 1500));
         if (token !== animationToken) return;
-        await wait(readingPause);
-        if (token !== animationToken) return;
+        if (!manualStepMode) {
+          await wait(scaledPause(2000));
+          if (token !== animationToken) return;
+        }
 
         status.textContent = "ribosome advancing";
         addExplanationPage(`${aminoAcid.codon} → ${aminoAcid.name}`, "The ribosome shifts one codon. The peptide-carrying tRNA moves from A to P, while the now-empty tRNA leaves the ribosome to the left.");
-        moveTrna(actor, pSitePosition, releaseDuration);
-        peptideGroup.style.transitionDuration = `${releaseDuration}ms`;
+        moveTrna(actor, pSitePosition, scaledDuration(1400));
+        peptideGroup.style.transitionDuration = `${scaledDuration(1400)}ms`;
         peptideGroup.style.transform = "translateX(0)";
         positionMrna(aminoAcidIndex + 1);
-        moveTrna(peptidylTrna, exitPosition, releaseDuration, "0");
+        moveTrna(peptidylTrna, exitPosition, scaledDuration(1400), "0");
         peptidylTrna.classList.add("exit-site");
         peptidylTrna.dataset.role = "exit";
-        await wait(releaseDuration);
+        await waitForStage(scaledPause(1400));
         if (token !== animationToken) return;
-        await wait(releasePause);
-        if (token !== animationToken) return;
+        if (!manualStepMode) {
+          await wait(scaledPause(1400));
+          if (token !== animationToken) return;
+        }
 
         peptidylTrna.remove();
         peptidylTrna = actor;
@@ -827,14 +900,38 @@
           loadMrna();
         }
       });
-      stepButton.addEventListener("click", translateNext);
+      stepButton.addEventListener("click", () => {
+        manualStepMode = false;
+        advanceRequested = false;
+        releaseStageWait?.();
+        releaseStageWait = undefined;
+        translateNext();
+      });
       previousExplanationButton.addEventListener("click", () => {
         if (currentExplanationPage === 0) return;
         restoreAnimationSnapshot(currentExplanationPage - 1);
       });
       nextExplanationButton.addEventListener("click", () => {
-        if (currentExplanationPage >= explanationPages.length - 1) return;
-        restoreAnimationSnapshot(currentExplanationPage + 1);
+        if (currentExplanationPage < explanationPages.length - 1) {
+          restoreAnimationSnapshot(currentExplanationPage + 1);
+          return;
+        }
+        if (!loaded || result.classList.contains("visible")) return;
+        manualStepMode = true;
+        isPlaying = false;
+        window.clearTimeout(playTimer);
+        playTimer = undefined;
+        window.clearTimeout(finishTimer);
+        finishTimer = undefined;
+        playButton.textContent = "▶ Play";
+        stepButton.disabled = true;
+        if (translating) {
+          releaseManualStage();
+        } else if (translated >= aminoAcids.length) {
+          finish();
+        } else {
+          translateNext();
+        }
       });
       playButton.addEventListener("click", () => {
         if (isPlaying) {
@@ -845,12 +942,21 @@
           if (!translating && translated < aminoAcids.length) stepButton.disabled = false;
           return;
         }
+        manualStepMode = false;
+        advanceRequested = false;
+        releaseStageWait?.();
+        releaseStageWait = undefined;
         isPlaying = true;
         stepButton.disabled = true;
         playButton.textContent = "Ⅱ Pause";
         if (!translating) translateNext();
       });
       resetButton.addEventListener("click", reset);
+      speedSlider.addEventListener("input", updateSpeedValue);
+      speedResetButton.addEventListener("click", () => {
+        speedSlider.value = "1";
+        updateSpeedValue();
+      });
     })();
   </script>
 </body>
